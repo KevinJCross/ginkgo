@@ -98,4 +98,35 @@ var _ = Describe("Repeat", func() {
 			Ω(session.Err).Should(gbytes.Say("--repeat and --until-it-fails are both set"))
 		})
 	})
+
+	Context("when told to --add-runtime-reporting", func() {
+		BeforeEach(func() {
+			fm.MountFixture("addruntimes")
+		})
+
+		It("should report all the nodes that ran ", func() {
+			session := startGinkgo(fm.PathTo("addruntimes"), "--add-runtime-reporting", "--no-color")
+			Eventually(session).Should(gexec.Exit(0))
+			output := string(session.Out.Contents())
+			report := fm.LoadJSONReports("addruntimes", "out.json")[0]
+			junit := fm.LoadJUnitReport("addruntimes", "out.xml").TestSuites[0]
+		})
+
+		Context("when the test eventually fails", func() {
+			It("should report failure and stop running", func() {
+				session := startGinkgo(fm.PathTo("eventually_failing"), "--repeat=3", "--no-color")
+				Eventually(session).Should(gexec.Exit(1))
+				Ω(session).Should(gbytes.Say("This was attempt 1 of 4"))
+				Ω(session).Should(gbytes.Say("This was attempt 2 of 4"))
+				Ω(session).Should(gbytes.Say("Tests failed on attempt #3"))
+
+				//it should change the random seed between each test
+				randomSeeds := extractRandomSeeds(string(session.Out.Contents()))
+				Ω(randomSeeds[0]).ShouldNot(Equal(randomSeeds[1]))
+				Ω(randomSeeds[1]).ShouldNot(Equal(randomSeeds[2]))
+				Ω(randomSeeds[0]).ShouldNot(Equal(randomSeeds[2]))
+			})
+		})
+	})
+
 })

@@ -19,6 +19,10 @@ const (
 	PhaseRun
 )
 
+type SuiteInstrumentation interface {
+	CallNode(suite *Suite, node Node, call func()) (types.SpecState, types.Failure)
+}
+
 type Suite struct {
 	tree               *TreeNode
 	topLevelContainers Nodes
@@ -39,6 +43,8 @@ type Suite struct {
 	report            types.Report
 	currentSpecReport types.SpecReport
 	currentNode       Node
+
+	instrumentation SuiteInstrumentation
 
 	client parallel_support.Client
 }
@@ -63,7 +69,10 @@ func (suite *Suite) BuildTree() error {
 	return nil
 }
 
-func (suite *Suite) Run(description string, suitePath string, failer *Failer, reporter reporters.Reporter, writer WriterInterface, outputInterceptor OutputInterceptor, interruptHandler interrupt_handler.InterruptHandlerInterface, client parallel_support.Client, suiteConfig types.SuiteConfig) (bool, bool) {
+func (suite *Suite) Run(description string, suitePath string, failer *Failer,
+	reporter reporters.Reporter, writer WriterInterface, outputInterceptor OutputInterceptor,
+	interruptHandler interrupt_handler.InterruptHandlerInterface, client parallel_support.Client,
+	suiteConfig types.SuiteConfig) (bool, bool) {
 	if suite.phase != PhaseBuildTree {
 		panic("cannot run before building the tree = call suite.BuildTree() first")
 	}
@@ -788,6 +797,13 @@ func (suite *Suite) runNode(node Node, interruptChannel chan interface{}, text s
 		suite.writer.Write([]byte(s))
 	}
 
+	if suite.instrumentation != nil {
+		return suite.instrumentation.CallNode(suite, node, func() { runBody(node, interruptChannel, suite) })
+	}
+	return runBody(node, interruptChannel, suite)
+}
+
+func runBody(node Node, interruptChannel chan interface{}, suite *Suite) (types.SpecState, types.Failure) {
 	var failure types.Failure
 	failure.FailureNodeType, failure.FailureNodeLocation = node.NodeType, node.CodeLocation
 	if node.NodeType.Is(types.NodeTypeIt) || node.NodeType.Is(types.NodeTypesForSuiteLevelNodes) {

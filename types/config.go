@@ -465,6 +465,8 @@ var GinkgoCLIRunFlags = GinkgoFlags{
 		Usage: "The number of times to re-run a test-suite.  Useful for debugging flaky tests.  If set to N the suite will be run N+1 times and will be required to pass each time."},
 	{KeyPath: "C.RandomizeSuites", Name: "randomize-suites", SectionKey: "order", DeprecatedName: "randomizeSuites", DeprecatedDocLink: "changed-command-line-flags",
 		Usage: "If set, ginkgo will randomize the order in which test suites run."},
+	{KeyPath: "C.AddRunTimeReporting", Name: "add-runtime-reporting", SectionKey: "reporting",
+		Usage: "if true then time taken to run each runnable node will be reported in a runtime summary section"},
 }
 
 // GinkgoCLIRunFlags provides flags for Ginkgo CLI's watch command that aren't shared by any other commands
